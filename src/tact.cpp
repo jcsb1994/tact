@@ -6,11 +6,8 @@
 
 void tact::_init()
 {
-    _maxDebounce = ((tact::_sampling_freq_hz * tact::_debounce_time_ms) >> 10);
-    if (!_maxDebounce)
-    {
-        _maxDebounce = 1;
-    }
+    _setMaxDebounce();
+    
     _curr_debounced_input = !_active_state;
     _last_debounced_input = !_active_state;
     Serial.print("max de ");
@@ -22,6 +19,14 @@ void tact::_init()
 uint8_t tact::_read()
 {
     return digitalRead(_pin);
+}
+
+void tact::_setMaxDebounce() {
+        _maxDebounce = ((tact::_sampling_freq_hz * tact::_debounce_time_ms) >> 10);
+    if (!_maxDebounce)
+    {
+        _maxDebounce = 1;
+    }
 }
 
 void tact::_debounce()

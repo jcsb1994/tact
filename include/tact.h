@@ -14,6 +14,11 @@
 //
 // Description:
 //    This file provides a high level interface for tact switch input management.
+//    Captures 3 types of events: button press, button release, and long press.
+//
+//    Events are returned from the poll function.
+//    A callback function can be set to be called when an event occurs. 
+//    ***Events of value 0 are ignored.
 //
 //***********************************************************************************
 
@@ -22,26 +27,10 @@
 
 #include <Arduino.h>
 
-//#######################################################################
-// Macros
-//#######################################################################
-
-#define TACT_PIN_UNASSIGNED (-1)
-
-//#######################################################################
-// Tact
-//#######################################################################
 
 class tact
 {
 public:
-    typedef enum
-    {
-        TACT_S_IDLE,
-        TACT_S_SHORT_PRESS,
-        TACT_S_RELEASE_PRESS,
-        TACT_S_LONG_PRESS
-    } TactState_t;
 
 //#######################################################################
 // Constructors
@@ -62,8 +51,8 @@ public:
     void setPin(int assigned_pin) { tact::_pin = assigned_pin; }
     int  getPin() { return tact::_pin; }
 
-    void setSamplingFreqkHz(uint16_t freq) { _sampling_freq_hz = freq; }
-    void setDebouncePeriodMs(uint16_t period) { _debounce_time_ms = period; }
+    void setSamplingFreqkHz(uint16_t freq) { _sampling_freq_hz = freq; _setMaxDebounce(); }
+    void setDebouncePeriodMs(uint16_t period) { _debounce_time_ms = period; _setMaxDebounce(); }
 
     void setActiveState(bool state);
 
@@ -72,8 +61,6 @@ private:
 
     uint16_t _long_press_delay_ms = 1000;
     bool _active_state = 0;
-
-    TactState_t _state = TACT_S_IDLE; // carries the current state after polling
 
     void (*_eventCallback)(int);
 
@@ -104,6 +91,7 @@ private:
 
     void _debounce();
 
+    void _setMaxDebounce();
     bool _isNowReleased();
     bool _isNowPressed();
 };
