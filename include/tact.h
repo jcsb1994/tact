@@ -60,10 +60,12 @@ public:
     int poll();
 
     void setPin(int assigned_pin) { tact::_pin = assigned_pin; }
-    int getPin() { return tact::_pin; }
+    int  getPin() { return tact::_pin; }
 
     void setSamplingFreqkHz(uint16_t freq) { _sampling_freq_hz = freq; }
     void setDebouncePeriodMs(uint16_t period) { _debounce_time_ms = period; }
+
+    void setActiveState(bool state);
 
 private:
     int _pin;
@@ -84,14 +86,13 @@ private:
     uint16_t _debounce_time_ms = 300;
     uint16_t _maxDebounce;
 
-    volatile uint16_t _rawInput = 1; // Current state of the tact switch
     volatile uint16_t _inputIntegrator;
-    volatile bool _curr_debounced_input = 1; // Output of the algorithm
-    volatile bool _last_debounced_input = 1;
+    volatile bool _curr_debounced_input; // Output of the algorithm
+    volatile bool _last_debounced_input;
 
     unsigned long long_press_counter = 0;
     bool long_effect_done = 0;
-    bool is_pressed = false; // Keeps track of which button is pressed during poll (useful when simultaneousButtonPressesConfig)
+    bool is_pressed = false; 
 
 //#######################################################################
 // Private functions
@@ -103,6 +104,8 @@ private:
 
     void _debounce();
 
+    bool _isNowReleased();
+    bool _isNowPressed();
 };
 
 #endif // Header guard
