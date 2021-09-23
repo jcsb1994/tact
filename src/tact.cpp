@@ -10,8 +10,6 @@ void tact::_init()
     
     _curr_debounced_input = !_active_state;
     _last_debounced_input = !_active_state;
-    Serial.print("max de ");
-    Serial.println(_maxDebounce);
 
     pinMode(_pin, INPUT_PULLUP);
 }
@@ -22,7 +20,7 @@ uint8_t tact::_read()
 }
 
 void tact::_setMaxDebounce() {
-        _maxDebounce = ((tact::_sampling_freq_hz * tact::_debounce_time_ms) >> 10);
+        _maxDebounce = ((tact::_sampling_freq_hz * tact::_debounce_time_ms) >> 10); // divides in 1k for ms to s
     if (!_maxDebounce)
     {
         _maxDebounce = 1;
@@ -35,11 +33,14 @@ void tact::_debounce()
 
     if (rawInput == 0)
     {
-        if (_inputIntegrator > 0)
+        if (_inputIntegrator > 0) {
             _inputIntegrator--;
+        }  
     }
-    else if (_inputIntegrator < _maxDebounce)
+    else if (_inputIntegrator < _maxDebounce) {
         _inputIntegrator++;
+    }
+        
 
     if (_inputIntegrator == 0)
         _curr_debounced_input = 0;
@@ -87,14 +88,15 @@ bool tact::_isNowPressed()
 */
 /**********************************************************************/
 
-tact::tact(int assigned_pin) : _eventCallback(NULL), _pin(assigned_pin)
+tact::tact(int assigned_pin) : _pin(assigned_pin)
 {
+    _eventCallback = NULL;
     _init();
 }
 
-tact::tact(int assigned_pin, void (*eventCallback)(int), int short_press_event = 0,
-           int release_press_event = 0,
-           int long_press_event = 0) : _pin(assigned_pin),
+tact::tact(int assigned_pin, void (*eventCallback)(int), int short_press_event/*  = 0 */,
+           int release_press_event/*  = 0 */,
+           int long_press_event/*  = 0 */) : _pin(assigned_pin),
                                        _eventCallback(eventCallback),
                                        _shortPressEvent(short_press_event),
                                        _releasePressEvent(release_press_event),
@@ -132,8 +134,9 @@ int tact::poll()
 
         if (_shortPressEvent)
         {
-            if (_eventCallback != NULL) 
+            if (_eventCallback != NULL){
                 _eventCallback(_shortPressEvent);
+            } 
             rc = _shortPressEvent;
         }
     }

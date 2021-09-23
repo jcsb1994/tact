@@ -27,7 +27,10 @@
 
 #include <Arduino.h>
 
-
+#define DFLT_TACT_SHORT_PRESS_CODE   (1)
+#define DFLT_TACT_RELEASE_PRESS_CODE (2)
+#define DFLT_TACT_LONG_PRESS_CODE    (3)
+#define DFLT_TACT_SAMPLE_FREQ_HZ (10000)  // 10k when not delaying
 class tact
 {
 public:
@@ -59,19 +62,20 @@ public:
 private:
     int _pin;
 
-    uint16_t _long_press_delay_ms = 1000;
-    bool _active_state = 0;
-
     void (*_eventCallback)(int);
 
-    int _shortPressEvent;
-    int _releasePressEvent;
-    int _longPressEvent;
+    int _shortPressEvent   = DFLT_TACT_SHORT_PRESS_CODE;
+    int _releasePressEvent = DFLT_TACT_RELEASE_PRESS_CODE;
+    int _longPressEvent    = DFLT_TACT_LONG_PRESS_CODE;
+
+    bool _active_state = 0;
 
     // Debounce variables
-    uint32_t _sampling_freq_hz = 10000; // will need logic to check when readings are too fast
+    uint32_t _sampling_freq_hz = DFLT_TACT_SAMPLE_FREQ_HZ; // will need logic to check when readings are too fast
     uint16_t _debounce_time_ms = 300;
     uint16_t _maxDebounce;
+
+    uint16_t _long_press_delay_ms = 1000;
 
     volatile uint16_t _inputIntegrator;
     volatile bool _curr_debounced_input; // Output of the algorithm
