@@ -30,7 +30,7 @@
 #define DFLT_TACT_SHORT_PRESS_CODE   (1)
 #define DFLT_TACT_RELEASE_PRESS_CODE (2)
 #define DFLT_TACT_LONG_PRESS_CODE    (3)
-#define DFLT_TACT_SAMPLE_FREQ_HZ (10000)  // 10k when not delaying
+#define DFLT_TACT_SAMPLE_FREQ_HZ  (5000)  // reference that works well with Arduino Uno no delay()
 class tact
 {
 public:
@@ -41,15 +41,20 @@ public:
 
     tact(int assigned_pin);
 
+    tact(int assigned_pin, int short_press_event,
+        int release_press_event = 0,
+        int long_press_event = 0);
+
     tact(int assigned_pin, void (*eventCallback)(int), int short_press_event = 0,
          int release_press_event = 0,
          int long_press_event = 0);
+
 
 //#######################################################################
 // Public functions
 //#######################################################################
 
-    int poll();
+    int poll(void (*shortPressCb)() = NULL, void (*releaseCb)() = NULL, void (*longPressCb)() = NULL);
 
     void setPin(int assigned_pin) { tact::_pin = assigned_pin; }
     int  getPin() { return tact::_pin; }
@@ -57,12 +62,19 @@ public:
     void setSamplingFreqkHz(uint16_t freq) { _sampling_freq_hz = freq; _setMaxDebounce(); }
     void setDebouncePeriodMs(uint16_t period) { _debounce_time_ms = period; _setMaxDebounce(); }
 
+    void setLongPressDelay(uint16_t delayMs) {_long_press_delay_ms = delayMs; }
+
     void setActiveState(bool state);
 
 private:
     int _pin;
 
-    void (*_eventCallback)(int);
+    void (*_buttonEventCallback)(int);
+
+
+    // void (*_shortPressCallback)() {};
+    // void (*_releaseCallback)() {};
+    // void (*_longPressCallback)() {};
 
     int _shortPressEvent   = DFLT_TACT_SHORT_PRESS_CODE;
     int _releasePressEvent = DFLT_TACT_RELEASE_PRESS_CODE;
@@ -74,15 +86,16 @@ private:
     uint32_t _sampling_freq_hz = DFLT_TACT_SAMPLE_FREQ_HZ; // will need logic to check when readings are too fast
     uint16_t _debounce_time_ms = 300;
     uint16_t _maxDebounce;
-
-    uint16_t _long_press_delay_ms = 1000;
-
     volatile uint16_t _inputIntegrator;
     volatile bool _curr_debounced_input; // Output of the algorithm
     volatile bool _last_debounced_input;
 
+    // Long press
+    uint16_t _long_press_delay_ms = 1000;
     unsigned long long_press_counter = 0;
     bool long_effect_done = 0;
+
+
     bool is_pressed = false; 
 
 //#######################################################################

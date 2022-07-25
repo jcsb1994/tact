@@ -1,5 +1,12 @@
 #include "tact.h"
 
+#define DEBUG_TACT 0
+#if DEBUG_TACT
+#define PRINT(msg) Serial.println(msg)
+#else
+#define PRINT(msg) 
+#endif
+
 //#######################################################################
 // Private functions
 //#######################################################################
@@ -90,20 +97,33 @@ bool tact::_isNowPressed()
 
 tact::tact(int assigned_pin) : _pin(assigned_pin)
 {
-    _eventCallback = NULL;
+    _buttonEventCallback = NULL;
     _init();
 }
+
+tact::tact(int assigned_pin, int short_press_event,
+           int release_press_event/*  = 0 */,
+           int long_press_event/*  = 0 */) : _pin(assigned_pin),
+                                       _shortPressEvent(short_press_event),
+                                       _releasePressEvent(release_press_event),
+                                       _longPressEvent(long_press_event)
+{
+    _buttonEventCallback = NULL;
+    _init();
+}
+
 
 tact::tact(int assigned_pin, void (*eventCallback)(int), int short_press_event/*  = 0 */,
            int release_press_event/*  = 0 */,
            int long_press_event/*  = 0 */) : _pin(assigned_pin),
-                                       _eventCallback(eventCallback),
+                                       _buttonEventCallback(eventCallback),
                                        _shortPressEvent(short_press_event),
                                        _releasePressEvent(release_press_event),
                                        _longPressEvent(long_press_event)
 {
     _init();
 }
+
 
 //#######################################################################
 // Public functions
@@ -119,7 +139,7 @@ void tact::setActiveState(bool state)
     _active_state = state;
 }
 
-int tact::poll()
+int tact::poll(void (*shortPressCb)(), void (*releaseCb)(), void (*longPressCb)())
 {
     int rc = 0;
 
@@ -129,13 +149,15 @@ int tact::poll()
 
     if (_isNowPressed())
     {
+        PRINT("pressed");
         is_pressed = true;
         long_press_counter = millis();
 
+        if (shortPressCb) { shortPressCb(); }
         if (_shortPressEvent)
         {
-            if (_eventCallback != NULL){
-                _eventCallback(_shortPressEvent);
+            if (_buttonEventCallback != NULL){
+                _buttonEventCallback(_shortPressEvent);
             } 
             rc = _shortPressEvent;
         }
@@ -145,10 +167,12 @@ int tact::poll()
 
     else if (_isNowReleased())
     {
+        PRINT("release (no trigger when long press)");
         if (!long_effect_done && _releasePressEvent)
         {
-            if (_eventCallback != NULL)
-                _eventCallback(_releasePressEvent);
+            if (releaseCb) { releaseCb(); }
+            if (_buttonEventCallback != NULL)
+                _buttonEventCallback(_releasePressEvent);
             rc = _releasePressEvent;
         }
 
@@ -161,13 +185,15 @@ int tact::poll()
 
     else if (is_pressed && !long_effect_done && ((millis() - long_press_counter) >= _long_press_delay_ms))
     {
+        PRINT("long pressed");
+        if (longPressCb) { longPressCb(); }
         if (_longPressEvent) {
-            if (_eventCallback != NULL)
-                _eventCallback(_longPressEvent);
+            if (_buttonEventCallback != NULL)
+                _buttonEventCallback(_longPressEvent);
             rc = _longPressEvent;
         }
 
-        long_effect_done++;
+        long_effect_done = true;
         long_press_counter = 0;
     }
 
