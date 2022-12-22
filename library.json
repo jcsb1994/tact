@@ -1,12 +1,12 @@
 {
-  "name": "Buzzer",
+  "name": "tact",
   "version": "1.0.0",
-  "description": "High level interface for tactile buttons in embedded projects",
-  "keywords": "embedded, buzzer, sound, music",
+  "description": "Interface for tactile buttons in embedded projects",
+  "keywords": "embedded, tact, tact switch, button",
   "repository":
   {
     "type": "git",
-    "url": "https://github.com/jcsb1994/Buzzer.git"
+    "url": "https://github.com/jcsb1994/tact.git"
   },
   "authors":
   [
@@ -21,6 +21,4 @@
   "dependencies": {
     "ownername/print": "~1.3.0"
   },
-  "frameworks": "arduino",
-  "platforms": "uno, espressif32"
 }

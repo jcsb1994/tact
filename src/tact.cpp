@@ -1,205 +1,131 @@
 #include "tact.h"
 
-#define DEBUG_TACT 0
-#if DEBUG_TACT
-#define PRINT(msg) Serial.println(msg)
-#else
-#define PRINT(msg) 
+#ifndef TACT_DEBUG_PRINT(msg) // user can define to print debug messages
+#define TACT_DEBUG_PRINT(msg) 
 #endif
 
 //#######################################################################
 // Private functions
 //#######################################################################
 
-void tact::_init()
+bool tact::_read()
 {
-    _setMaxDebounce();
-    
-    _curr_debounced_input = !_active_state;
-    _last_debounced_input = !_active_state;
-
-    pinMode(_pin, INPUT_PULLUP);
+    return (_active_state == _read_gpio_cb(_pin));
 }
 
-uint8_t tact::_read()
+void tact::_setMaxDebounceCount()
 {
-    return digitalRead(_pin);
-}
-
-void tact::_setMaxDebounce() {
-        _maxDebounce = ((tact::_sampling_freq_hz * tact::_debounce_time_ms) >> 10); // divides in 1k for ms to s
-    if (!_maxDebounce)
+    _max_debounce_count = ((tact::_poll_freq_hz * tact::_debounce_time_ms) / 1000);
+    if (!_max_debounce_count)
     {
-        _maxDebounce = 1;
+        _max_debounce_count = 1;
     }
 }
 
 void tact::_debounce()
 {
-    uint8_t rawInput = _read();
+    bool rawInput = _read();
 
-    if (rawInput == 0)
+    if (rawInput == false)
     {
-        if (_inputIntegrator > 0) {
-            _inputIntegrator--;
+        if (_debounce_counter > 0) {
+            _debounce_counter--;
+            TACT_DEBUG_PRINT("--");
+            TACT_DEBUG_PRINT(_debounce_counter);
         }  
     }
-    else if (_inputIntegrator < _maxDebounce) {
-        _inputIntegrator++;
+    else if (_debounce_counter < _max_debounce_count) {
+        _debounce_counter++;
+        TACT_DEBUG_PRINT("++");
+        TACT_DEBUG_PRINT(_debounce_counter);
     }
         
-
-    if (_inputIntegrator == 0)
-        _curr_debounced_input = 0;
-    else if (_inputIntegrator >= _maxDebounce)
+    if (_debounce_counter == 0)
     {
-        _inputIntegrator = _maxDebounce; // Defensive code
-        _curr_debounced_input = 1;
+        _curr_debounced_state = false;
+    }
+    else if (_debounce_counter >= _max_debounce_count)
+    {
+        _debounce_counter = _max_debounce_count; // Defensive code
+        _curr_debounced_state = true;
     }
 }
 
 bool tact::_isNowReleased()
 {
-    if ((_curr_debounced_input != _active_state) &&
-        (_last_debounced_input == _active_state))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return (!_curr_debounced_state) && (_last_debounced_state);
 }
 
 bool tact::_isNowPressed()
 {
-    if ((_curr_debounced_input == _active_state) &&
-        (_last_debounced_input != _active_state))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return (_curr_debounced_state) && (!_last_debounced_state);
 }
 
-//#######################################################################
-// Constructors
-//#######################################################################
-
-/**********************************************************************/
-/*!
-    @brief  Ctor for tacts
-    @param  assigned_pin hardware GPIO linked to the tact switch
-*/
-/**********************************************************************/
-
-tact::tact(int assigned_pin) : _pin(assigned_pin)
+bool tact::_isLongPressReached()
 {
-    _buttonEventCallback = NULL;
-    _init();
+    return (_is_pressed && (_long_press_ticks >= _ticks_to_long_press));
 }
 
-tact::tact(int assigned_pin, int short_press_event,
-           int release_press_event/*  = 0 */,
-           int long_press_event/*  = 0 */) : _pin(assigned_pin),
-                                       _shortPressEvent(short_press_event),
-                                       _releasePressEvent(release_press_event),
-                                       _longPressEvent(long_press_event)
+uint16_t tact::_msToTicks(uint16_t period_ms)
 {
-    _buttonEventCallback = NULL;
-    _init();
+    return (period_ms * 1000) / _poll_freq_hz;
 }
-
-
-tact::tact(int assigned_pin, void (*eventCallback)(int), int short_press_event/*  = 0 */,
-           int release_press_event/*  = 0 */,
-           int long_press_event/*  = 0 */) : _pin(assigned_pin),
-                                       _buttonEventCallback(eventCallback),
-                                       _shortPressEvent(short_press_event),
-                                       _releasePressEvent(release_press_event),
-                                       _longPressEvent(long_press_event)
-{
-    _init();
-}
-
 
 //#######################################################################
 // Public functions
 //#######################################################################
 
-void tact::setActiveState(bool state)
+tact::tact(int assigned_pin, int (*read_gpio_cb)(int), uint16_t poll_freq_hz, int active_state) : 
+    _pin(assigned_pin), _read_gpio_cb(read_gpio_cb),
+    _poll_freq_hz(poll_freq_hz), _active_state(active_state)
 {
-    if (_active_state != state)
-    {
-        _curr_debounced_input = !_curr_debounced_input;
-        _last_debounced_input = !_last_debounced_input;
-    }
-    _active_state = state;
+    setTimeToLongPress(TACT_DFLT_TIME_TO_LONG_PRESS_MS);
+    _setMaxDebounceCount();
 }
 
-int tact::poll(void (*shortPressCb)(), void (*releaseCb)(), void (*longPressCb)())
+
+tact_press_t tact::poll(void (*shortPressCb)(), void (*releaseCb)(), void (*longPressCb)())
 {
-    int rc = 0;
-
+    tact_press_t rc = TACT_NO_PRESS;    
     _debounce();
-
-    //----------------------------------------------------------------
+    if (_is_pressed) { _long_press_ticks++; }
 
     if (_isNowPressed())
     {
-        PRINT("pressed");
-        is_pressed = true;
-        long_press_counter = millis();
+        TACT_DEBUG_PRINT("pressed pin:");
+        TACT_DEBUG_PRINT(_pin);
+        _is_pressed = true;
+        _long_press_ticks = 0;
 
-        if (shortPressCb) { shortPressCb(); }
-        if (_shortPressEvent)
-        {
-            if (_buttonEventCallback != NULL){
-                _buttonEventCallback(_shortPressEvent);
-            } 
-            rc = _shortPressEvent;
-        }
+        if (shortPressCb != 0) { shortPressCb(); }
+        rc = TACT_SHORT_PRESS;
     }
-
-    //----------------------------------------------------------------
 
     else if (_isNowReleased())
     {
-        PRINT("release (no trigger when long press)");
-        if (!long_effect_done && _releasePressEvent)
+        TACT_DEBUG_PRINT("released pin:");
+        TACT_DEBUG_PRINT(_pin)
+        if (!_long_effect_done) // no effect if long press occured
         {
-            if (releaseCb) { releaseCb(); }
-            if (_buttonEventCallback != NULL)
-                _buttonEventCallback(_releasePressEvent);
-            rc = _releasePressEvent;
+            if (releaseCb != 0) { releaseCb(); }
+            rc = TACT_RELEASE_PRESS;
         }
-
-        long_effect_done = 0;
-        long_press_counter = 0;
-        is_pressed = 0;
+        _long_press_ticks = 0;
+        _long_effect_done = false;
+        _is_pressed = false;
     }
 
-//----------------------------------------------------------------
-
-    else if (is_pressed && !long_effect_done && ((millis() - long_press_counter) >= _long_press_delay_ms))
+    else if (_isLongPressReached() && !_long_effect_done)
     {
-        PRINT("long pressed");
-        if (longPressCb) { longPressCb(); }
-        if (_longPressEvent) {
-            if (_buttonEventCallback != NULL)
-                _buttonEventCallback(_longPressEvent);
-            rc = _longPressEvent;
-        }
-
-        long_effect_done = true;
-        long_press_counter = 0;
+        TACT_DEBUG_PRINT("long press on pin:");
+        TACT_DEBUG_PRINT(_pin)
+        if (longPressCb != 0) { longPressCb(); }
+        rc = TACT_LONG_PRESS;
+        
+        _long_press_ticks = 0;
+        _long_effect_done = true;
     }
 
-//----------------------------------------------------------------
-
-    tact::_last_debounced_input = tact::_curr_debounced_input;
-
+    _last_debounced_state = _curr_debounced_state;
     return rc;
 }

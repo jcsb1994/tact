@@ -1,5 +1,5 @@
 //***********************************************************************************
-// Copyright 2021 jcsb1994
+// Copyright 2022 jcsb1994
 // Written by jcsb1994
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,100 +17,81 @@
 //    Captures 3 types of events: button press, button release, and long press.
 //
 //    Events are returned from the poll function.
-//    A callback function can be set to be called when an event occurs. 
-//    ***Events of value 0 are ignored.
+//    A callback function can be set to be called when an event occurs.
 //
 //***********************************************************************************
 
 #ifndef TACT_H
 #define TACT_H
 
-#include <Arduino.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#define DFLT_TACT_SHORT_PRESS_CODE   (1)
-#define DFLT_TACT_RELEASE_PRESS_CODE (2)
-#define DFLT_TACT_LONG_PRESS_CODE    (3)
-#define DFLT_TACT_SAMPLE_FREQ_HZ  (5000)  // reference that works well with Arduino Uno no delay()
+#define TACT_DFLT_DEBOUNCE_PERIOD_MS    (300)
+#define TACT_DFLT_TIME_TO_LONG_PRESS_MS (1000)
+
+typedef enum {
+    TACT_NO_PRESS,
+    TACT_SHORT_PRESS,
+    TACT_RELEASE_PRESS,
+    TACT_LONG_PRESS
+} tact_press_t;
 class tact
 {
 public:
+    /*! @param assigned_pin Gpio to which the tact button is connected to
+        @param read_gpio_cb Hardware specific gpio read function that takes gpio # as argument and returns its state 
+        @param poll_freq_hz Frequency at which the tact obect will be polled using tact.poll()
+        @param active_state Active state of the tact, (e.g. active high or active low),
+            i.e. return value of the read_gpio_cb callback when the tact is pressed */
+    tact(int assigned_pin,
+         int (*read_gpio_cb)(int /* gpio */),
+         uint16_t poll_freq_hz,
+         int active_state);
 
-//#######################################################################
-// Constructors
-//#######################################################################
-
-    tact(int assigned_pin);
-
-    tact(int assigned_pin, int short_press_event,
-        int release_press_event = 0,
-        int long_press_event = 0);
-
-    tact(int assigned_pin, void (*eventCallback)(int), int short_press_event = 0,
-         int release_press_event = 0,
-         int long_press_event = 0);
-
-
-//#######################################################################
-// Public functions
-//#######################################################################
-
-    int poll(void (*shortPressCb)() = NULL, void (*releaseCb)() = NULL, void (*longPressCb)() = NULL);
+    /*! @brief Poll the tact button to detect presses. Must call repeatedly in main loop */
+    tact_press_t poll(void (*shortPressCb)() = 0, void (*releaseCb)() = 0, void (*longPressCb)() = 0);
 
     void setPin(int assigned_pin) { tact::_pin = assigned_pin; }
     int  getPin() { return tact::_pin; }
+    /*! \brief Set the active state of the tact, (e.g. active high or active low),
+        i.e. return value of the read_gpio callback when the tact is pressed */
+    void setActiveState(int state) { _active_state = state; };
 
-    void setSamplingFreqkHz(uint16_t freq) { _sampling_freq_hz = freq; _setMaxDebounce(); }
-    void setDebouncePeriodMs(uint16_t period) { _debounce_time_ms = period; _setMaxDebounce(); }
-
-    void setLongPressDelay(uint16_t delayMs) {_long_press_delay_ms = delayMs; }
-
-    void setActiveState(bool state);
+    /*! @brief Set the frequency at which tact.poll() is called to adjust the debounce algorithm */
+    void setPollFreq(uint16_t hertz) { _poll_freq_hz = hertz; _setMaxDebounceCount(); }
+    void setDebouncePeriod(uint16_t millisec) { _debounce_time_ms = millisec; _setMaxDebounceCount(); }
+    /*! \brief Set time period the user needs to press the button to trigger a long press effect */
+    void setTimeToLongPress(uint16_t millisec) {_ticks_to_long_press = _msToTicks(millisec); }
 
 private:
+    // Press settings
     int _pin;
+    int _active_state;
+    int (*_read_gpio_cb)(int);
+    uint16_t _poll_freq_hz;
+    uint16_t _ticks_to_long_press;
+    // Press algo
+    uint16_t _long_press_ticks = 0;
+    bool _long_effect_done = false;
+    bool _is_pressed = false;
 
-    void (*_buttonEventCallback)(int);
-
-
-    // void (*_shortPressCallback)() {};
-    // void (*_releaseCallback)() {};
-    // void (*_longPressCallback)() {};
-
-    int _shortPressEvent   = DFLT_TACT_SHORT_PRESS_CODE;
-    int _releasePressEvent = DFLT_TACT_RELEASE_PRESS_CODE;
-    int _longPressEvent    = DFLT_TACT_LONG_PRESS_CODE;
-
-    bool _active_state = 0;
-
-    // Debounce variables
-    uint32_t _sampling_freq_hz = DFLT_TACT_SAMPLE_FREQ_HZ; // will need logic to check when readings are too fast
-    uint16_t _debounce_time_ms = 300;
-    uint16_t _maxDebounce;
-    volatile uint16_t _inputIntegrator;
-    volatile bool _curr_debounced_input; // Output of the algorithm
-    volatile bool _last_debounced_input;
-
-    // Long press
-    uint16_t _long_press_delay_ms = 1000;
-    unsigned long long_press_counter = 0;
-    bool long_effect_done = 0;
-
-
-    bool is_pressed = false; 
-
-//#######################################################################
-// Private functions
-//#######################################################################
+    // Debounce settings
+    uint16_t _debounce_time_ms = TACT_DFLT_DEBOUNCE_PERIOD_MS;
+    uint16_t _max_debounce_count;
+    // Debounce algo
+    uint16_t _debounce_counter = 0;
+    bool _curr_debounced_state = false; // Output of the algorithm, true for active (pressed)
+    bool _last_debounced_state = false;
 
     void _init();
-
-    uint8_t _read(); // can be reimplemented for different hardware
-
+    bool _read();
     void _debounce();
-
-    void _setMaxDebounce();
+    void _setMaxDebounceCount();
     bool _isNowReleased();
     bool _isNowPressed();
+    bool _isLongPressReached();
+    uint16_t _msToTicks(uint16_t period_ms);
 };
 
-#endif // Header guard
+#endif
