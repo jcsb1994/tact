@@ -1,6 +1,6 @@
 #include "tact.h"
 
-#ifndef TACT_DEBUG_PRINT(msg) // user can define to print debug messages
+#ifndef TACT_DEBUG_PRINT // user can define to print debug messages
 #define TACT_DEBUG_PRINT(msg) 
 #endif
 
@@ -68,7 +68,7 @@ bool tact::_isLongPressReached()
 
 uint16_t tact::_msToTicks(uint16_t period_ms)
 {
-    return (period_ms * 1000) / _poll_freq_hz;
+    return (period_ms * _poll_freq_hz) / 1000;
 }
 
 //#######################################################################
@@ -104,7 +104,7 @@ tact_press_t tact::poll(void (*shortPressCb)(), void (*releaseCb)(), void (*long
     else if (_isNowReleased())
     {
         TACT_DEBUG_PRINT("released pin:");
-        TACT_DEBUG_PRINT(_pin)
+        TACT_DEBUG_PRINT(_pin);
         if (!_long_effect_done) // no effect if long press occured
         {
             if (releaseCb != 0) { releaseCb(); }
@@ -114,11 +114,10 @@ tact_press_t tact::poll(void (*shortPressCb)(), void (*releaseCb)(), void (*long
         _long_effect_done = false;
         _is_pressed = false;
     }
-
     else if (_isLongPressReached() && !_long_effect_done)
     {
         TACT_DEBUG_PRINT("long press on pin:");
-        TACT_DEBUG_PRINT(_pin)
+        TACT_DEBUG_PRINT(_pin);
         if (longPressCb != 0) { longPressCb(); }
         rc = TACT_LONG_PRESS;
         

@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define TACT_DFLT_DEBOUNCE_PERIOD_MS    (300)
+#define TACT_DFLT_DEBOUNCE_PERIOD_MS    (100)
 #define TACT_DFLT_TIME_TO_LONG_PRESS_MS (1000)
 
 typedef enum {
@@ -54,22 +54,24 @@ public:
 
     void setPin(int assigned_pin) { tact::_pin = assigned_pin; }
     int  getPin() { return tact::_pin; }
-    /*! \brief Set the active state of the tact, (e.g. active high or active low),
+    /*! @brief Set the active state of the tact, (e.g. active high or active low),
         i.e. return value of the read_gpio callback when the tact is pressed */
     void setActiveState(int state) { _active_state = state; };
 
     /*! @brief Set the frequency at which tact.poll() is called to adjust the debounce algorithm */
     void setPollFreq(uint16_t hertz) { _poll_freq_hz = hertz; _setMaxDebounceCount(); }
+    /*! @note The debounce period determines how long before a button press is detected.
+    A wobbly button may need a longer debounce period, but a value above 100-150ms will be noticeable */
     void setDebouncePeriod(uint16_t millisec) { _debounce_time_ms = millisec; _setMaxDebounceCount(); }
-    /*! \brief Set time period the user needs to press the button to trigger a long press effect */
+    /*! @brief Set time period the user needs to press the button to trigger a long press effect */
     void setTimeToLongPress(uint16_t millisec) {_ticks_to_long_press = _msToTicks(millisec); }
 
 private:
     // Press settings
     int _pin;
-    int _active_state;
     int (*_read_gpio_cb)(int);
     uint16_t _poll_freq_hz;
+    int _active_state;
     uint16_t _ticks_to_long_press;
     // Press algo
     uint16_t _long_press_ticks = 0;

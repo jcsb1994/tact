@@ -1,5 +1,5 @@
 # tact
-This library provides an interface to facilitate operations with tactile buttons in embedded devices.
+This library provides an interface to facilitate operations with tactile buttons in embedded devices. It has no dependency to any platform, however you must be able to compile C++11 on your platform.
 
 This library supports detection of button presses, button releases, and long presses.
 
@@ -23,15 +23,7 @@ The function `tact.poll()` must be called at a predetermined frequency. This hel
 
 #### Example with Arduino
 
-This library has no dependency to Arduino, however it is a good way to show the usage as an example
+This library has no dependency to Arduino.
 
-```
-tact myButton = tact()
+The example (available at `examples/tact_arduino_uno.cpp`) shows how you can use this library with a timed call to `tact.poll()` using `millis()`. It is also be possible to use an ISR.
 
-if(millis() - lastPoll >= 100)
-{
-    
-    lastPoll += 100;
-}
-
-```
