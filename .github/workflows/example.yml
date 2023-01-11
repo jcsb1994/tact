@@ -23,7 +23,8 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
-      - name: Run PlatformIO
-        run: |
-          pio ci --lib="." --board=uno examples/tact_arduino_uno.cpp
-          pio ci --lib="." --board=nucleo_f446re -O framework=mbed examples/tact_mbed.cpp
+      - name: Build tact_arduino_uno example
+        run: pio ci --lib="." --board=uno examples/tact_arduino_uno.cpp
+      
+      - name: Build examples/tact_mbed example
+        run: pio ci --lib="." --board=disco_f469ni -O framework=mbed examples/tact_mbed.cpp
