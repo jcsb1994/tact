@@ -1,0 +1,30 @@
+name: PlatformIO CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
+
+      - name: Build tact_arduino_uno example
+        run: pio ci --lib="." --board=uno examples/tact_arduino_uno.cpp
+      
+      - name: Build examples/tact_mbed example
+        run: pio ci --lib="." --board=disco_f469ni -O framework=mbed examples/tact_mbed.cpp

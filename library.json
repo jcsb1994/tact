@@ -17,8 +17,5 @@
       "maintainer": true
     }
   ],
-  "license": "Apache",
-  "dependencies": {
-    "ownername/print": "~1.3.0"
-  }
+  "license": "Apache"
 }
