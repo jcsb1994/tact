@@ -1,6 +1,6 @@
 {
   "name": "tact",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Interface for tactile buttons in embedded projects",
   "keywords": "embedded, tact, tact switch, button",
   "repository":
@@ -17,5 +17,5 @@
       "maintainer": true
     }
   ],
-  "license": "Apache"
+  "license": "Apache-2.0"
 }
